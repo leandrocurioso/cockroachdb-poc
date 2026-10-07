@@ -1,0 +1,165 @@
+{
+  "uid": "cockroachdb-golden-signals",
+  "title": "CockroachDB – Golden Signals & Raft Consensus",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "refresh": "10s",
+  "time": { "from": "now-15m", "to": "now" },
+  "timezone": "browser",
+  "tags": ["cockroachdb", "golden-signals", "raft"],
+  "panels": [
+    { "id": 100, "type": "row", "title": "Golden Signals", "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 } },
+
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "SQL Service Latency (p50 / p75 / p90 / p99)",
+      "description": "End-to-end SQL latency as seen by clients, from the sql_service_latency histogram.",
+      "datasource": { "type": "prometheus", "uid": "cockroachdb-prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 1 },
+      "fieldConfig": { "defaults": { "unit": "ns", "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 10 } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        { "refId": "A", "expr": "histogram_quantile(0.50, sum(rate(sql_service_latency_bucket[$__rate_interval])) by (le))", "legendFormat": "p50" },
+        { "refId": "B", "expr": "histogram_quantile(0.75, sum(rate(sql_service_latency_bucket[$__rate_interval])) by (le))", "legendFormat": "p75" },
+        { "refId": "C", "expr": "histogram_quantile(0.90, sum(rate(sql_service_latency_bucket[$__rate_interval])) by (le))", "legendFormat": "p90" },
+        { "refId": "D", "expr": "histogram_quantile(0.99, sum(rate(sql_service_latency_bucket[$__rate_interval])) by (le))", "legendFormat": "p99" }
+      ]
+    },
+
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "Storage Usage %",
+      "description": "capacity_used / capacity per store.",
+      "datasource": { "type": "prometheus", "uid": "cockroachdb-prometheus" },
+      "gridPos": { "h": 8, "w": 4, "x": 12, "y": 1 },
+      "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100, "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 10 } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        { "refId": "A", "expr": "100 * capacity_used / capacity", "legendFormat": "node {{node_id}}" }
+      ]
+    },
+
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "CPU Usage % (normalized)",
+      "description": "sys_cpu_combined_percent_normalized per node.",
+      "datasource": { "type": "prometheus", "uid": "cockroachdb-prometheus" },
+      "gridPos": { "h": 8, "w": 4, "x": 16, "y": 1 },
+      "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100, "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 10 } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        { "refId": "A", "expr": "100 * sys_cpu_combined_percent_normalized", "legendFormat": "node {{node_id}}" }
+      ]
+    },
+
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "Memory Usage (RSS)",
+      "description": "Process resident set size (sys_rss) per node.",
+      "datasource": { "type": "prometheus", "uid": "cockroachdb-prometheus" },
+      "gridPos": { "h": 8, "w": 4, "x": 20, "y": 1 },
+      "fieldConfig": { "defaults": { "unit": "bytes", "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 10 } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        { "refId": "A", "expr": "sys_rss", "legendFormat": "node {{node_id}}" }
+      ]
+    },
+
+    { "id": 150, "type": "row", "title": "Benchmark Throughput", "gridPos": { "h": 1, "w": 24, "x": 0, "y": 9 } },
+
+    {
+      "id": 10,
+      "type": "timeseries",
+      "title": "Transactions Per Second (TPS)",
+      "description": "Bench inserts/sec, from rate(sql_insert_count) — ground truth for what the bench app is actually achieving, cluster-wide and per node. (sql_txn_commit_count doesn't track single-statement implicit transactions like the bench app's CTE-based insert, so it reads near-zero — insert count is the reliable signal here.)",
+      "datasource": { "type": "prometheus", "uid": "cockroachdb-prometheus" },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 10 },
+      "fieldConfig": { "defaults": { "unit": "ops", "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 10 } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        { "refId": "A", "expr": "sum(rate(sql_insert_count[$__rate_interval]))", "legendFormat": "cluster total" },
+        { "refId": "B", "expr": "rate(sql_insert_count[$__rate_interval])", "legendFormat": "node {{node_id}}" }
+      ]
+    },
+
+    { "id": 200, "type": "row", "title": "Raft Consensus", "gridPos": { "h": 1, "w": 24, "x": 0, "y": 18 } },
+
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Raft Leaders & Leaseholders per Node",
+      "description": "replicas_leaders and replicas_leaseholders — leadership/leaseholder distribution across the cluster.",
+      "datasource": { "type": "prometheus", "uid": "cockroachdb-prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 19 },
+      "fieldConfig": { "defaults": { "unit": "short", "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 10 } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        { "refId": "A", "expr": "replicas_leaders", "legendFormat": "node {{node_id}} leaders" },
+        { "refId": "B", "expr": "replicas_leaseholders", "legendFormat": "node {{node_id}} leaseholders" }
+      ]
+    },
+
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Raft Log Commit Latency (p99)",
+      "description": "Time to commit a Raft log entry to local storage, from raft_process_logcommit_latency.",
+      "datasource": { "type": "prometheus", "uid": "cockroachdb-prometheus" },
+      "gridPos": { "h": 8, "w": 6, "x": 12, "y": 19 },
+      "fieldConfig": { "defaults": { "unit": "ns", "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 10 } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        { "refId": "A", "expr": "histogram_quantile(0.99, sum(rate(raft_process_logcommit_latency_bucket[$__rate_interval])) by (le, node_id))", "legendFormat": "node {{node_id}}" }
+      ]
+    },
+
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "Raft Replication Latency (p99)",
+      "description": "End-to-end latency to replicate a command to followers, from raft_replication_latency.",
+      "datasource": { "type": "prometheus", "uid": "cockroachdb-prometheus" },
+      "gridPos": { "h": 8, "w": 6, "x": 18, "y": 19 },
+      "fieldConfig": { "defaults": { "unit": "ns", "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 10 } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        { "refId": "A", "expr": "histogram_quantile(0.99, sum(rate(raft_replication_latency_bucket[$__rate_interval])) by (le, node_id))", "legendFormat": "node {{node_id}}" }
+      ]
+    },
+
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "Raft Commands Proposed vs Applied (rate)",
+      "description": "raft_commands_proposed and raft_commandsapplied per second — consensus throughput.",
+      "datasource": { "type": "prometheus", "uid": "cockroachdb-prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 27 },
+      "fieldConfig": { "defaults": { "unit": "ops", "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 10 } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        { "refId": "A", "expr": "rate(raft_commands_proposed[$__rate_interval])", "legendFormat": "node {{node_id}} proposed" },
+        { "refId": "B", "expr": "rate(raft_commandsapplied[$__rate_interval])", "legendFormat": "node {{node_id}} applied" }
+      ]
+    },
+
+    {
+      "id": 9,
+      "type": "timeseries",
+      "title": "Under-replicated & Unavailable Ranges",
+      "description": "Ranges that have lost quorum tolerance (ranges_underreplicated) or quorum entirely (ranges_unavailable). Should stay at 0.",
+      "datasource": { "type": "prometheus", "uid": "cockroachdb-prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 27 },
+      "fieldConfig": { "defaults": { "unit": "short", "min": 0, "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 10 } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        { "refId": "A", "expr": "ranges_underreplicated", "legendFormat": "node {{node_id}} under-replicated" },
+        { "refId": "B", "expr": "ranges_unavailable", "legendFormat": "node {{node_id}} unavailable" }
+      ]
+    }
+  ]
+}

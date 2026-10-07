@@ -1,0 +1,35 @@
+package main
+
+import (
+	"context"
+	"fmt"
+	"time"
+
+	"github.com/jackc/pgx/v5/pgxpool"
+)
+
+func main() {
+	ctx := context.Background()
+	pool, err := pgxpool.New(ctx, "postgresql://root@localhost:26257/bench?sslmode=disable")
+	if err != nil {
+		panic(err)
+	}
+	defer pool.Close()
+	pool.Ping(ctx)
+
+	for i := 0; i < 10; i++ {
+		t0 := time.Now()
+		var x int
+		pool.QueryRow(ctx, "SELECT 1").Scan(&x)
+		fmt.Println("select1:", time.Since(t0))
+	}
+
+	for i := 0; i < 5; i++ {
+		t0 := time.Now()
+		tx, _ := pool.Begin(ctx)
+		var id string
+		tx.QueryRow(ctx, "INSERT INTO client (name) VALUES ($1) RETURNING id", "probe").Scan(&id)
+		tx.Commit(ctx)
+		fmt.Println("single-insert-txn:", time.Since(t0))
+	}
+}
